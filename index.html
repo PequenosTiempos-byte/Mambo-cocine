@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La cocina de la semana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#F1EFE2; --paper:#FFFDF7; --ink:#2B2A26; --ink-soft:#6d6a58;
+    --primary:#2F5233; --primary-dark:#1E3924; --primary-light:#E4EFDE;
+    --accent:#C2531F; --accent-dark:#8f3a19; --accent-light:#F6E1D2;
+    --mustard:#D89A2E; --mustard-light:#FBEDD1;
+    --sky:#4C86A8; --sky-light:#DDECF2;
+    --line:#E1DAC4;
+    --radius-lg:18px; --radius-md:12px;
+    --shadow: 0 1px 2px rgba(43,42,38,0.05), 0 6px 18px rgba(43,42,38,0.07);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Nunito',system-ui,-apple-system,sans-serif;
+    font-size:15.5px; line-height:1.5; -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:16px 16px 50px;}
+  header.top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;}
+  h1{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:26px;margin:0 0 2px;color:var(--primary-dark);}
+  .tagline{color:var(--ink-soft);font-size:13px;margin:0;}
+  .personas-box{
+    background:var(--paper);border:1px solid var(--line);border-radius:20px;
+    padding:8px 8px 8px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);
+  }
+  .personas-box label{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+  .stepper{display:flex;align-items:center;gap:6px;}
+  .stepper button{
+    width:32px;height:32px;border-radius:9px;border:none;background:var(--primary);
+    color:#fff;font-size:18px;line-height:1;cursor:pointer;
+  }
+  .stepper button:active{transform:scale(0.94);}
+  .stepper span{min-width:22px;text-align:center;font-weight:800;font-family:'Baloo 2',sans-serif;font-size:17px;color:var(--primary-dark);}
+
+  nav.tabs{
+    display:flex;gap:6px;margin-bottom:20px;
+    background:var(--paper);border:1px solid var(--line);border-radius:26px;
+    padding:5px;box-shadow:var(--shadow);
+    position:sticky;top:8px;z-index:30;
+  }
+  nav.tabs button{
+    flex:1;appearance:none;border:none;background:transparent;border-radius:22px;
+    padding:11px 6px;font-family:'Nunito',sans-serif;font-size:13.5px;font-weight:800;
+    color:var(--ink-soft);cursor:pointer;white-space:nowrap;
+  }
+  nav.tabs button.active{background:var(--primary);color:#fff;}
+
+  .noscript-warn{
+    background:var(--accent-light);border:1.5px solid var(--accent);border-radius:var(--radius-lg);
+    padding:14px 16px;font-size:14px;color:var(--accent-dark);font-weight:700;margin-bottom:18px;line-height:1.45;
+  }
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .section-title{font-family:'Baloo 2',sans-serif;font-size:18px;font-weight:700;color:var(--primary-dark);margin:0 0 10px;}
+
+  .week-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+  .day-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:12px 14px;}
+  .day-card .day-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .day-card .day-name{
+    font-family:'Baloo 2',sans-serif;font-weight:700;font-size:14.5px;color:var(--primary);
+    background:var(--primary-light);border-radius:20px;padding:3px 12px;
+  }
+  .day-card select{
+    width:100%;border:1px solid var(--line);border-radius:var(--radius-md);padding:11px 10px;
+    font-size:14.5px;font-family:'Nunito',sans-serif;font-weight:700;background:#fff;color:var(--ink);
+  }
+  .day-card .day-note{font-size:12.5px;color:var(--ink-soft);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .mambo-badge{display:inline-flex;align-items:center;gap:4px;background:var(--mustard-light);color:#7a531a;border-radius:20px;padding:2px 9px 2px 4px;font-size:11.5px;font-weight:700;}
+  .season-badge{display:inline-flex;align-items:center;gap:4px;background:var(--sky-light);color:#2f5f78;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700;}
+  .time-badge{display:inline-flex;align-items:center;gap:4px;background:var(--accent-light);color:var(--accent-dark);border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700;}
+  .hecho-row{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .hecho-row input{width:19px;height:19px;accent-color:var(--primary);}
+  .hecho-row.done{color:var(--primary-dark);}
+
+  .postres-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .chip-check{display:flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:9px 14px;cursor:pointer;font-size:13.5px;font-weight:700;box-shadow:var(--shadow);}
+  .chip-check input{accent-color:var(--accent);width:17px;height:17px;}
+
+  .recipes-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;}
+  .btn{appearance:none;border:none;border-radius:24px;padding:10px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13.5px;cursor:pointer;}
+  .btn-accent{background:var(--accent);color:#fff;}
+  .btn-accent:active{background:var(--accent-dark);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1.5px solid var(--line);}
+  .btn-ghost:active{background:var(--primary-light);color:var(--primary-dark);}
+  .btn-text{background:none;border:none;color:var(--accent-dark);font-weight:800;font-size:13px;cursor:pointer;padding:6px;}
+
+  .recipe-list{display:flex;flex-direction:column;gap:14px;}
+  .recipe-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow);}
+  .rc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;}
+  .rc-head h3{font-family:'Baloo 2',sans-serif;font-size:17.5px;margin:0;color:var(--ink);}
+  .rc-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .tag{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .tag-principal{background:var(--primary-light);color:var(--primary-dark);}
+  .tag-postre{background:var(--mustard-light);color:#8a5c14;}
+  .scaled-note{font-size:11.5px;color:var(--ink-soft);font-weight:700;margin:0 0 6px;}
+  .ingredient-line{font-size:13.5px;color:var(--ink-soft);margin:0 0 3px;display:flex;gap:6px;align-items:baseline;}
+  .ingredient-line .emo{font-size:14px;}
+  .recipe-note{font-size:12.5px;font-style:italic;color:var(--ink-soft);margin-top:8px;}
+  .rc-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .steps-box{margin-top:10px;background:var(--primary-light);border-radius:var(--radius-md);padding:10px 14px;display:none;}
+  .steps-box.open{display:block;}
+  .steps-box ol{margin:0;padding-left:18px;}
+  .steps-box li{font-size:13.5px;margin-bottom:6px;color:var(--primary-dark);}
+
+  .search-bar{margin-bottom:10px;}
+  .search-bar input{
+    width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:24px;
+    font-family:'Nunito',sans-serif;font-size:14.5px;background:var(--paper);
+    box-shadow:var(--shadow);-webkit-appearance:none;
+  }
+  .filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+  .filter-chip{
+    flex:0 0 auto;appearance:none;border:1.5px solid var(--line);background:var(--paper);
+    border-radius:20px;padding:7px 14px;font-family:'Nunito',sans-serif;font-size:12.5px;
+    font-weight:800;color:var(--ink-soft);cursor:pointer;white-space:nowrap;
+  }
+  .filter-chip.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .sort-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .sort-row label{font-size:12.5px;font-weight:800;color:var(--ink-soft);}
+  .sort-row select{
+    flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-md);
+    font-family:'Nunito',sans-serif;font-size:13.5px;background:var(--paper);color:var(--ink);
+  }
+  .result-count{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin:0 0 10px;}
+  .no-results{
+    text-align:center;padding:26px 20px;color:var(--ink-soft);font-size:14px;
+    background:var(--paper);border:1px dashed var(--line);border-radius:var(--radius-lg);
+  }
+
+  .idea-form{
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:14px;box-shadow:var(--shadow);margin-bottom:18px;display:flex;flex-direction:column;gap:8px;
+  }
+  .idea-form input{
+    width:100%;padding:11px;border:1px solid var(--line);border-radius:var(--radius-md);
+    font-family:'Nunito',sans-serif;font-size:14.5px;background:#fff;
+  }
+  .idea-card{
+    background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--mustard);
+    border-radius:var(--radius-md);padding:12px 14px;box-shadow:var(--shadow);margin-bottom:10px;
+  }
+  .idea-card h4{font-family:'Baloo 2',sans-serif;font-size:16px;margin:0 0 4px;color:var(--ink);}
+  .idea-card p{font-size:13px;color:var(--ink-soft);margin:0 0 10px;}
+  .idea-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .ideas-empty{
+    text-align:center;padding:30px 20px;color:var(--ink-soft);font-size:14px;
+    background:var(--paper);border:1px dashed var(--line);border-radius:var(--radius-lg);
+  }
+
+  .alert-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-radius:var(--radius-lg);margin-bottom:18px;font-size:13.5px;font-weight:800;}
+  .alert-pending{background:var(--mustard-light);color:#8a5c14;}
+  .alert-done{background:var(--primary-light);color:var(--primary-dark);}
+
+  .shop-category{
+    margin-bottom:16px;background:var(--paper);border:1px solid var(--line);
+    border-radius:var(--radius-lg);padding:4px 14px 10px;box-shadow:var(--shadow);
+  }
+  .shop-category h4{font-family:'Baloo 2',sans-serif;font-size:15px;color:var(--primary);border-bottom:2px solid var(--primary-light);padding:10px 0 7px;margin:0 0 4px;}
+  .shop-item{
+    display:flex;align-items:center;gap:10px;padding:11px 2px;font-size:14.5px;
+    border-bottom:1px solid var(--primary-light);flex-wrap:wrap;
+  }
+  .shop-item:last-child{border-bottom:none;}
+  .shop-item .chk{width:21px;height:21px;accent-color:var(--primary);flex-shrink:0;}
+  .shop-item .emo{font-size:17px;}
+  .shop-main{flex:1;min-width:150px;}
+  .shop-main .buy-line{font-weight:700;color:var(--primary-dark);}
+  .shop-main .buy-line .qty{color:var(--accent-dark);font-weight:800;}
+  .shop-main .buy-line.enough{color:var(--ink-soft);font-weight:600;}
+  .shop-item.checked .buy-line,
+  .shop-item.checked .buy-line .qty{text-decoration:line-through;color:#a9a593;font-weight:600;}
+  .shop-sub{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:1px;}
+  .stock-box{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);font-weight:700;}
+  .stock-box input{
+    width:58px;padding:6px 7px;border:1.5px solid var(--line);border-radius:8px;
+    font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;text-align:center;
+    background:#fff;color:var(--primary-dark);
+  }
+  .stock-box input:focus{border-color:var(--primary);outline:none;}
+  .shop-empty{color:var(--ink-soft);font-size:13.5px;font-style:italic;padding:4px 0 6px;}
+
+  footer.meta{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap;gap:8px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(43,42,38,0.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--paper);border-radius:20px 20px 0 0;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:20px 20px 26px;box-shadow:0 -10px 40px rgba(0,0,0,0.25);}
+  @media (min-width:700px){
+    .modal-overlay{align-items:center;padding:20px;}
+    .modal{border-radius:18px;}
+  }
+  .modal h2{font-family:'Baloo 2',sans-serif;margin:0 0 14px;font-size:19px;color:var(--primary-dark);}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;font-weight:800;color:var(--ink-soft);margin-bottom:4px;}
+  .field input,.field select,.field textarea{
+    width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:var(--radius-md);
+    font-family:'Nunito',sans-serif;font-size:14.5px;background:#fff;
+  }
+  .field textarea{min-height:80px;resize:vertical;}
+  .check-field{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13.5px;font-weight:700;}
+  .check-field input{width:18px;height:18px;}
+  .ing-row{display:grid;grid-template-columns:1.6fr 0.8fr 0.9fr 1fr auto;gap:5px;margin-bottom:6px;align-items:center;}
+  .ing-row input,.ing-row select{padding:7px 6px;border:1px solid var(--line);border-radius:8px;font-size:12px;}
+  .ing-row .rm{background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;line-height:1;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .confirm-modal .modal{max-width:380px;}
+  .confirm-text{font-size:14px;margin-bottom:16px;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:60;max-width:90vw;text-align:center;}
+  .toast.show{opacity:0.95;}
+  @media (max-width:480px){ .ing-row{grid-template-columns:1fr 1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>🍲 La cocina de la semana</h1>
+      <p class="tagline">Menú, recetas y compras</p>
+    </div>
+    <div class="personas-box">
+      <label>Personas</label>
+      <div class="stepper">
+        <button id="personasMinus" type="button">–</button>
+        <span id="personasValue">4</span>
+        <button id="personasPlus" type="button">+</button>
+      </div>
+    </div>
+  </header>
+
+  <noscript>
+    <div class="noscript-warn">
+      Este visor no ejecuta scripts, así que la app no puede funcionar acá.
+      Tocá compartir y elegí "Abrir en Safari", o abrila desde el chat en vez de descargarla.
+    </div>
+  </noscript>
+
+  <nav class="tabs">
+    <button data-tab="semana" class="active">📅 Semana</button>
+    <button data-tab="recetas">📖 Recetas</button>
+    <button data-tab="ideas">💡 Ideas</button>
+    <button data-tab="compras">🛒 Compras</button>
+  </nav>
+
+  <section id="panel-semana" class="panel active">
+    <div class="week-list" id="weekList"></div>
+    <div class="section-title">🍪 Postres para esta semana</div>
+    <div class="postres-row" id="postresRow"></div>
+  </section>
+
+  <section id="panel-recetas" class="panel">
+    <div class="recipes-toolbar">
+      <div class="section-title" style="margin:0;">Tus recetas</div>
+      <button class="btn btn-accent" id="btnNuevaReceta">+ Nueva</button>
+    </div>
+    <div class="search-bar">
+      <input type="search" id="recipeSearch" placeholder="Buscar receta o ingrediente…">
+    </div>
+    <div class="filter-row" id="filterRow">
+      <button class="filter-chip active" data-filter="todas">Todas</button>
+      <button class="filter-chip" data-filter="principal">Principales</button>
+      <button class="filter-chip" data-filter="postre">Postres</button>
+      <button class="filter-chip" data-filter="mambo">Mambo</button>
+      <button class="filter-chip" data-filter="rapidas">Hasta 30 min</button>
+    </div>
+    <div class="sort-row">
+      <label for="recipeSort">Ordenar</label>
+      <select id="recipeSort">
+        <option value="alfabetico">Por nombre</option>
+        <option value="tiempo">Por tiempo (más rápida primero)</option>
+        <option value="tipo">Por tipo</option>
+      </select>
+    </div>
+    <div class="recipe-list" id="recipeList"></div>
+  </section>
+
+  <section id="panel-ideas" class="panel">
+    <div class="idea-form">
+      <input type="text" id="ideaTitulo" placeholder="Idea de plato o receta…">
+      <input type="text" id="ideaNota" placeholder="Nota (opcional): qué te gustó, con qué probarla…">
+      <button class="btn btn-accent" id="btnAddIdea">Anotar idea</button>
+    </div>
+    <div id="ideasList"></div>
+  </section>
+
+  <section id="panel-compras" class="panel">
+    <div id="alertBanner"></div>
+    <div id="shoppingList"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" id="btnResetChecks">🔄 Empezar semana nueva</button>
+      <button class="btn btn-ghost" id="btnResetStock">Vaciar "ya tengo"</button>
+    </div>
+  </section>
+
+  <footer class="meta">
+    <span id="saveStatus">Cargando…</span>
+    <button class="btn-text" id="btnResetData">Restablecer ejemplo</button>
+  </footer>
+</div>
+
+<div class="modal-overlay" id="recipeModalOverlay">
+  <div class="modal">
+    <h2 id="recipeModalTitle">Nueva receta</h2>
+    <div class="field"><label>Nombre</label><input type="text" id="rNombre" placeholder="Ej: Tarta de zapallito"></div>
+    <div class="field"><label>Tipo</label>
+      <select id="rCategoria"><option value="principal">Plato principal</option><option value="postre">Postre / merienda</option></select>
+    </div>
+    <div class="field"><label>Tiempo total de cocción (minutos)</label><input type="number" id="rTiempo" min="0" step="1" placeholder="Ej: 45"></div>
+    <label class="check-field"><input type="checkbox" id="rMambo"> 🤖 Se usa la Mambo Victory</label>
+    <label class="check-field"><input type="checkbox" id="rVaporeras"> ♨️ Usa las 2 vaporeras</label>
+    <label class="check-field"><input type="checkbox" id="rEstacional"> ☀️ Es estacional (depende del clima)</label>
+    <div class="field">
+      <label>Ingredientes (cantidades para 4 personas)</label>
+      <div id="ingRows"></div>
+      <button type="button" class="btn-text" id="btnAddIng">+ agregar ingrediente</button>
+    </div>
+    <div class="field"><label>Paso a paso (un paso por línea)</label><textarea id="rPasos" placeholder="Cortar la cebolla…"></textarea></div>
+    <div class="field"><label>Notas (opcional)</label><input type="text" id="rNotas" placeholder="Ej: milanesas ya rebozadas"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCancelRecipe">Cancelar</button>
+      <button class="btn btn-accent" id="btnSaveRecipe">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay confirm-modal" id="confirmOverlay">
+  <div class="modal">
+    <h2 id="confirmTitle">¿Confirmar?</h2>
+    <p class="confirm-text" id="confirmText"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnConfirmNo">Cancelar</button>
+      <button class="btn btn-accent" id="btnConfirmYes">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCHEMA_VERSION = 3;
+const STORAGE_TIMEOUT_MS = 6000;
+
+// Pegado desde la consola de Firebase (Configuración del proyecto > Tus apps)
+const firebaseConfig = {
+  apiKey: "AIzaSyD791TV7sq5BpNSy1rWXJogy-MKUSsef-4",
+  authDomain: "mambo-cocine.firebaseapp.com",
+  databaseURL: "https://mambo-cocine-default-rtdb.firebaseio.com",
+  projectId: "mambo-cocine",
+  storageBucket: "mambo-cocine.firebasestorage.app",
+  messagingSenderId: "569688682973",
+  appId: "1:569688682973:web:acbc0a48bd74f083cf8634",
+};
+firebase.initializeApp(firebaseConfig);
+const dbRef = firebase.database().ref('cocina-semanal-datos');
+const DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+const DIAS_LABEL = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
+const CATEGORIAS_COMPRA = ['Verdulería','Dietética','Carnicería','Almacén'];
+const UNIDADES_CONTINUAS = ['g','kg','ml','l'];
+
+const EMOJI_MAP = [
+  ['lenteja','🫘'],['cebolla','🧅'],['zanahoria','🥕'],['calabaza','🎃'],['zapallito','🥒'],
+  ['papa','🥔'],['batata','🍠'],['tomate','🍅'],['ajo','🧄'],['perejil','🌿'],['lechuga','🥬'],
+  ['hoja','🥬'],['banana','🍌'],['manzana','🍎'],['limón','🍋'],['limon','🍋'],['avena','🌾'],
+  ['azúcar','🟤'],['azucar','🟤'],['harina','🌾'],['huevo','🥚'],['queso','🧀'],['aceite','🫒'],
+  ['sal fina','🧂'],['vainilla','🧴'],['polvo de hornear','🫧'],['canela','🟠'],['uva','🍇'],
+  ['pollo','🍗'],['milanesa','🍗'],['lomo','🥩'],['solomillo','🥩'],['pescado','🐟'],
+];
+function getEmoji(nombre, categoria){
+  const n = (nombre||'').toLowerCase();
+  for(const [k,e] of EMOJI_MAP){ if(n.includes(k)) return e; }
+  const fallback = {'Verdulería':'🥬','Dietética':'🌾','Carnicería':'🍖','Almacén':'🧺'};
+  return fallback[categoria] || '🍽️';
+}
+function mamboIcon(){
+  return `<svg viewBox="0 0 40 40" width="17" height="17" style="vertical-align:-4px;">
+    <circle cx="13" cy="10" r="5" fill="#2F5233"/><circle cx="27" cy="10" r="5" fill="#2F5233"/>
+    <circle cx="20" cy="24" r="13" fill="#D89A2E"/>
+    <circle cx="16" cy="23" r="1.6" fill="#2B2A26"/><circle cx="24" cy="23" r="1.6" fill="#2B2A26"/>
+    <path d="M15 28 Q20 32 25 28" stroke="#2B2A26" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function seedData(){
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    personas: 4,
+    recipes: [
+      { id:'guiso-lentejas', nombre:'Guiso de lentejas con verduras', categoria:'principal',
+        usaMambo:false, vaporeras:false, estacional:false, tiempo:55,
+        notas:'Se cocina en la cacerola de barro, más sabor que en olla común.',
+        ingredientes:[
+          {nombre:'Lentejas secas',cantidad:300,unidad:'g',categoria:'Dietética'},
+          {nombre:'Cebolla',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zanahoria',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Calabaza',cantidad:2,unidad:'trozos',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:2,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Pesar las lentejas en el vaso de la Mambo y ponerlas en remojo mientras se corta el resto.',
+          'Cortar la cebolla, la zanahoria, la calabaza y el ajo.',
+          'En la cacerola de barro, con un chorrito de aceite, rehogar la cebolla y el ajo 3-4 minutos.',
+          'Agregar la zanahoria y la calabaza, rehogar 2 minutos más.',
+          'Sumar las lentejas escurridas, cubrir con agua caliente y salar.',
+          'Cocinar tapado a fuego bajo 35-40 minutos, revolviendo de tanto en tanto.',
+        ]},
+      { id:'milanesas-vapor', nombre:'Milanesas de pollo + vegetales al vapor', categoria:'principal',
+        usaMambo:true, vaporeras:true, estacional:false, tiempo:30,
+        notas:'Milanesas ya rebozadas, no se hacen en casa.',
+        ingredientes:[
+          {nombre:'Milanesas de pollo (rebozadas)',cantidad:8,unidad:'unidades',categoria:'Carnicería'},
+          {nombre:'Papa',cantidad:4,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zapallito',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zanahoria',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Aceite de oliva',cantidad:15,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:3,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Precalentar el horno a 200°C y acomodar las milanesas en una bandeja.',
+          'Cortar la papa y la zanahoria en trozos parejos, y el zapallito en rodajas.',
+          'Papa y zanahoria en la vaporera 1; zapallito en la vaporera 2.',
+          'Poner agua en el vaso y programar modo Varoma, 20-25 minutos, velocidad 1.',
+          'En paralelo, hornear las milanesas 15-18 minutos, dándolas vuelta a mitad.',
+          'Servir con un chorrito de aceite de oliva y sal sobre las verduras.',
+        ]},
+      { id:'tarta-zapallito', nombre:'Tarta de zapallito sin tapa', categoria:'principal',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:45,
+        notas:'Sin tapa de harina, tipo frittata al horno.',
+        ingredientes:[
+          {nombre:'Zapallito',cantidad:3,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Huevo',cantidad:5,unidad:'unidades',categoria:'Almacén'},
+          {nombre:'Cebolla',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Queso rallado',cantidad:80,unidad:'g',categoria:'Almacén'},
+          {nombre:'Aceite',cantidad:15,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:3,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Cortar el zapallito y la cebolla en trozos chicos.',
+          'En el vaso de la Mambo: huevos, sal y aceite. Velocidad 4, 10 segundos.',
+          'Agregar zapallito, cebolla y queso. Velocidad 3, 5 segundos.',
+          'Volcar en una fuente para horno enmantecada.',
+          'Hornear a 180°C, 30-35 minutos, hasta que esté dorada y firme.',
+        ]},
+      { id:'pollo-vapor', nombre:'Pollo con verduras al vapor', categoria:'principal',
+        usaMambo:true, vaporeras:true, estacional:false, tiempo:35,
+        notas:'La opción de todo el año, sin depender del clima.',
+        ingredientes:[
+          {nombre:'Pollo (pata y muslo o pechuga)',cantidad:6,unidad:'presas',categoria:'Carnicería'},
+          {nombre:'Zapallito',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zanahoria',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:2,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Aceite',cantidad:15,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Salar las presas de pollo y colocarlas en la vaporera 1.',
+          'Cortar zapallito y zanahoria, y ponerlos con el ajo en la vaporera 2.',
+          'Llenar el vaso con agua y programar modo Varoma, 25-30 minutos, velocidad 1.',
+          'A mitad de cocción, dar vuelta las presas.',
+          'Servir con un chorrito de aceite y sal.',
+        ]},
+      { id:'pollo-parrilla', nombre:'Pollo a la parrilla con verduras salteadas', categoria:'principal',
+        usaMambo:false, vaporeras:false, estacional:true, tiempo:40,
+        notas:'Para cuando la terraza no esté helada.',
+        ingredientes:[
+          {nombre:'Pollo (pata y muslo o pechuga)',cantidad:6,unidad:'presas',categoria:'Carnicería'},
+          {nombre:'Zapallito',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zanahoria',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:2,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Aceite',cantidad:15,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Encender la parrilla a gas y dejar que tome temperatura.',
+          'Salar las presas y llevarlas a la parrilla con la tapa cerrada.',
+          'Cocinar 12-15 minutos de cada lado, según el grosor.',
+          'Mientras tanto, saltear zapallito, zanahoria y ajo en sartén con aceite, 6-8 minutos.',
+          'Servir el pollo con las verduras salteadas.',
+        ]},
+      { id:'lomo-solomillo', nombre:'Lomo o solomillo (o pescado) con verduras', categoria:'principal',
+        usaMambo:true, vaporeras:true, estacional:false, tiempo:40,
+        notas:'Alternar lomo, solomillo y pescado semana a semana.',
+        ingredientes:[
+          {nombre:'Lomo o solomillo de cerdo (o pescado)',cantidad:800,unidad:'g',categoria:'Carnicería'},
+          {nombre:'Papa',cantidad:4,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Calabaza',cantidad:2,unidad:'trozos',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:2,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Aceite de oliva',cantidad:15,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Precalentar el horno a 200°C. Salar la carne y ponerla en bandeja con un chorrito de aceite.',
+          'Hornear 25-30 minutos, según el corte.',
+          'En paralelo: papa en la vaporera 1, calabaza y ajo en la vaporera 2. Modo Varoma 20-25 minutos, velocidad 1.',
+          'Dejar reposar la carne 5 minutos antes de cortar.',
+        ]},
+      { id:'crema-calabacin-puerro', nombre:'Crema de zapallito y puerro', categoria:'principal',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:30,
+        notas:'Sin gluten. La peque puede lavar las verduras y volcar los trozos.',
+        ingredientes:[
+          {nombre:'Zapallito',cantidad:3,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Puerro',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Papa',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Agua o caldo de verduras',cantidad:700,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Aceite de oliva',cantidad:20,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:3,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Lavar y trocear el puerro, el zapallito y la papa.',
+          'Poner el puerro y el aceite en el vaso. Sofreír, 100°C, velocidad 1, 5 minutos.',
+          'Agregar zapallito, papa, agua o caldo y sal. Cocinar, 100°C, velocidad 1, 20 minutos.',
+          'Triturar subiendo de velocidad 5 a 10 durante 1 minuto.',
+          'Servir templada con un chorrito de aceite de oliva. Dura 3 días en heladera o se congela.',
+        ]},
+      { id:'caldo-verduras', nombre:'Caldo de verduras casero', categoria:'principal',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:40,
+        notas:'Rinde 1,5 L. Base para sopas, arroces y purés. Las verduras coladas se pueden triturar como puré aparte.',
+        ingredientes:[
+          {nombre:'Cebolla',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Zanahoria',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Apio',cantidad:1,unidad:'rama',categoria:'Verdulería'},
+          {nombre:'Puerro',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:1,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Laurel',cantidad:1,unidad:'hoja',categoria:'Almacén'},
+          {nombre:'Agua',cantidad:1500,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Lavar bien todas las verduras (tarea ideal para la peque).',
+          'Cortar la cebolla al medio y trocear grueso zanahoria, apio y puerro.',
+          'Poner todo en el vaso con el ajo y el laurel.',
+          'Agregar el agua y la sal. Cocinar, 100°C, velocidad cuchara, 35 minutos.',
+          'Colar separando el líquido de las verduras.',
+          'Enfriar y guardar hasta 3 días en heladera, o congelar en porciones.',
+        ]},
+      { id:'sopa-calabaza', nombre:'Sopa de calabaza', categoria:'principal',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:30,
+        notas:'Si hace mucha espuma al licuar, hacerlo en 2 tandas (sensor de jarra llena).',
+        ingredientes:[
+          {nombre:'Cebolla',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Ajo',cantidad:1,unidad:'dientes',categoria:'Verdulería'},
+          {nombre:'Calabaza',cantidad:3,unidad:'trozos',categoria:'Verdulería'},
+          {nombre:'Agua o caldo de verduras',cantidad:400,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Aceite de oliva',cantidad:20,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Poner cebolla, ajo y aceite en la jarra. Picar 5 segundos, velocidad 5.',
+          'Sofreír 3 minutos, 120°C, velocidad 1, sin cubilete.',
+          'Agregar la calabaza en cubos, el agua o caldo y la sal. Cocinar 20 minutos, 100°C, velocidad 1.',
+          'Dejar entibiar 5 minutos y licuar 1 minuto, velocidad progresiva 5 a 10.',
+          'Probar y ajustar sal. La peque puede decorar con semillas o aceite de oliva.',
+        ]},
+      { id:'yogur-casero', nombre:'Yogur casero', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:600,
+        notas:'Guardá 2 cucharadas para usar como fermento la próxima vez. Cuanto más fermenta, más ácido queda.',
+        ingredientes:[
+          {nombre:'Leche entera',cantidad:1000,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Yogur natural (como iniciador)',cantidad:30,unidad:'g',categoria:'Almacén'},
+          {nombre:'Leche en polvo (opcional)',cantidad:20,unidad:'g',categoria:'Almacén'},
+        ],
+        pasos:[
+          'Poner la leche en el vaso. Cocción 90°C, velocidad 2, 10 minutos, sin cubilete.',
+          'Dejar enfriar hasta 37-40°C (tibia al tacto), unos 30-40 minutos.',
+          'Agregar el yogur iniciador y la leche en polvo. Mezclar 10 segundos, velocidad 3.',
+          'Volcar en potes de vidrio con tapa y dejar 8 horas en lugar tibio, sin mover.',
+          'Llevar a la heladera mínimo 2 horas. Dura 5-7 días.',
+        ]},
+      { id:'dulce-batata', nombre:'Dulce de batata', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:60,
+        notas:'Versión con menos azúcar que la tradicional. Enfriar 30-40 min en la mesada y dejar toda la noche en heladera para que tome cuerpo.',
+        ingredientes:[
+          {nombre:'Batata',cantidad:500,unidad:'g',categoria:'Verdulería'},
+          {nombre:'Azúcar mascabo',cantidad:250,unidad:'g',categoria:'Dietética'},
+          {nombre:'Limón',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Agua',cantidad:80,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Canela (opcional)',cantidad:3,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Pelar y cortar la batata en cubos. Ponerla en el vaso con el agua.',
+          'Cocinar a 100°C, velocidad 1, 20 minutos, hasta que esté bien blanda.',
+          'Triturar velocidad progresiva 5 a 10, 1 minuto.',
+          'Agregar el azúcar mascabo, el jugo de limón y la canela.',
+          'Reducir a 100°C, velocidad 2, 25-30 minutos, sin cubilete, hasta que espese.',
+          'Volcar en moldes, enfriar en la mesada y llevar a la heladera.',
+        ]},
+      { id:'galletas-avena-banana', nombre:'Galletas de avena y banana', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:25,
+        notas:'Sin azúcar agregada. Es normal que el palillo salga algo húmedo por la banana. Duran 3-4 días en hermético.',
+        ingredientes:[
+          {nombre:'Banana madura',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Harina de avena (avena molida)',cantidad:150,unidad:'g',categoria:'Dietética'},
+          {nombre:'Canela',cantidad:3,unidad:'g',categoria:'Dietética'},
+          {nombre:'Pasas o chips (opcional)',cantidad:30,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Pelar y trocear la banana (la peque puede pelar). Triturar velocidad 4, 10 segundos.',
+          'Agregar la harina de avena y la canela. Mezclar velocidad 3, 15 segundos.',
+          'Sumar las pasas y revolver a mano con espátula.',
+          'Armar bolitas y aplanarlas sobre placa con papel manteca.',
+          'Hornear a 180°C, 12-15 minutos, hasta que doren los bordes.',
+          'Para moler la avena no usar Turbo: velocidad progresiva 5 a 10, 15-20 segundos.',
+        ]},
+      { id:'galletas-arandanos-nueces', nombre:'Galletitas de avena, arándanos y nueces', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:35,
+        notas:'Usa leche sin lactosa. Horno en posición 2, calor arriba y abajo.',
+        ingredientes:[
+          {nombre:'Avena',cantidad:150,unidad:'g',categoria:'Dietética'},
+          {nombre:'Harina leudante',cantidad:100,unidad:'g',categoria:'Dietética'},
+          {nombre:'Nueces',cantidad:60,unidad:'g',categoria:'Dietética'},
+          {nombre:'Arándanos',cantidad:80,unidad:'g',categoria:'Verdulería'},
+          {nombre:'Huevo',cantidad:1,unidad:'unidades',categoria:'Almacén'},
+          {nombre:'Leche sin lactosa',cantidad:60,unidad:'ml',categoria:'Almacén'},
+          {nombre:'Azúcar mascabo',cantidad:60,unidad:'g',categoria:'Dietética'},
+          {nombre:'Esencia de vainilla',cantidad:3,unidad:'g',categoria:'Almacén'},
+        ],
+        pasos:[
+          'Moler la avena: velocidad progresiva 5 a 10, 15-20 segundos (no usar Turbo).',
+          'Agregar huevo, leche, azúcar mascabo y vainilla. Velocidad 4, 15 segundos.',
+          'Incorporar la harina leudante. Velocidad 3, 10 segundos.',
+          'Sumar nueces y arándanos y mezclar a mano con espátula.',
+          'Armar las galletitas en placa con papel manteca.',
+          'Hornear en posición 2, 15-18 minutos.',
+        ]},
+      { id:'galletas-maicena', nombre:'Galletitas de maicena (con mascabo y banana)', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:75,
+        notas:'La masa se puede hacer la noche anterior. Con mascabo la mezcla se ve cortada en el paso 3, es normal. Cuando espesa, usar espátula o manos, no batidor.',
+        ingredientes:[
+          {nombre:'Maicena (fécula de maíz)',cantidad:200,unidad:'g',categoria:'Dietética'},
+          {nombre:'Harina leudante',cantidad:100,unidad:'g',categoria:'Dietética'},
+          {nombre:'Azúcar mascabo',cantidad:80,unidad:'g',categoria:'Dietética'},
+          {nombre:'Banana madura',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Manteca',cantidad:100,unidad:'g',categoria:'Almacén'},
+          {nombre:'Huevo',cantidad:2,unidad:'unidades',categoria:'Almacén'},
+          {nombre:'Esencia de vainilla',cantidad:3,unidad:'g',categoria:'Almacén'},
+          {nombre:'Limón (ralladura)',cantidad:1,unidad:'unidades',categoria:'Verdulería'},
+        ],
+        pasos:[
+          'Batir la manteca con el azúcar mascabo: velocidad 4, 30 segundos.',
+          'Agregar los huevos, la banana pisada, la vainilla y la ralladura de limón. Velocidad 4, 20 segundos.',
+          'Incorporar la maicena y la harina leudante. Velocidad 3, 15 segundos. Si se ve cortada, es normal.',
+          'Terminar de unir con espátula o con las manos.',
+          'Llevar la masa al freezer 30 minutos (o a la heladera toda la noche).',
+          'Formar las galletitas y hornear a 160°C (más bajo, porque el mascabo dora más rápido), 12-15 minutos. El color ya no sirve de guía: revisar que la base esté firme.',
+        ]},
+      { id:'galletitas-smookies', nombre:'Galletitas estilo Smookies', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:25,
+        notas:'Sin azúcar refinada. Ideal para hacer con la peque.',
+        ingredientes:[
+          {nombre:'Banana madura',cantidad:2,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Avena',cantidad:150,unidad:'g',categoria:'Dietética'},
+          {nombre:'Jugo de uva concentrado',cantidad:30,unidad:'g',categoria:'Dietética'},
+          {nombre:'Canela',cantidad:5,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Banana en el vaso de la Mambo. Velocidad 4, 10 segundos (la peque aprieta el botón).',
+          'Agregar avena, jugo de uva y canela. Velocidad 3, 8 segundos.',
+          'Formar bolitas de unos 20 g y aplastarlas en placa con papel manteca.',
+          'Hornear a 180°C, 15-18 minutos.',
+        ]},
+      { id:'budin-banana', nombre:'Budín de banana', categoria:'postre',
+        usaMambo:true, vaporeras:false, estacional:false, tiempo:50,
+        notas:'Mezclado en la Mambo, horneado en horno convencional.',
+        ingredientes:[
+          {nombre:'Banana madura',cantidad:3,unidad:'unidades',categoria:'Verdulería'},
+          {nombre:'Huevo',cantidad:2,unidad:'unidades',categoria:'Almacén'},
+          {nombre:'Aceite neutro',cantidad:60,unidad:'g',categoria:'Almacén'},
+          {nombre:'Azúcar mascabo',cantidad:100,unidad:'g',categoria:'Dietética'},
+          {nombre:'Harina 0000',cantidad:150,unidad:'g',categoria:'Dietética'},
+          {nombre:'Polvo de hornear',cantidad:5,unidad:'g',categoria:'Dietética'},
+          {nombre:'Esencia de vainilla',cantidad:3,unidad:'g',categoria:'Almacén'},
+          {nombre:'Sal fina',cantidad:3,unidad:'g',categoria:'Dietética'},
+        ],
+        pasos:[
+          'Bananas en el vaso. Velocidad 4, 10 segundos.',
+          'Agregar huevos, aceite y azúcar mascabo. Velocidad 4, 15 segundos.',
+          'Incorporar harina, polvo de hornear, vainilla y sal. Velocidad 3, 10 segundos.',
+          'Volcar en molde enmantecado.',
+          'Hornear a 180°C, 35-40 minutos.',
+        ]},
+    ],
+    semana:{lunes:'guiso-lentejas',martes:'milanesas-vapor',miercoles:'tarta-zapallito',jueves:'pollo-vapor',viernes:'lomo-solomillo',sabado:null,domingo:null},
+    postres:{'galletitas-smookies':true,'budin-banana':true},
+    compras:{},
+    stock:{},
+    ideas:[
+      {id:'idea-ej-1', titulo:'Hamburguesas caseras de lentejas', nota:'Aprovechar las lentejas que sobran del guiso. Ver si ligan sin harina.'},
+      {id:'idea-ej-2', titulo:'Budín de zanahoria', nota:'Versión con mascabo, para la merienda de la semana.'},
+    ],
+    hechos:{lunes:false,martes:false,miercoles:false,jueves:false,viernes:false,sabado:false,domingo:false},
+  };
+}
+
+let state = seedData();
+let editingRecipeId = null;
+let confirmCallback = null;
+let openStepsIds = new Set();
+let convertingIdeaId = null;
+let recipeQuery = '';
+let recipeFilter = 'todas';
+let recipeSort = 'alfabetico';
+let storageOk = true;
+let firstLoad = true;
+
+async function saveState(){
+  const statusEl = document.getElementById('saveStatus');
+  if(!storageOk){ statusEl.textContent = 'Modo sin guardado: no se pudo conectar con la base de datos.'; return; }
+  try{
+    await Promise.race([
+      dbRef.set(state),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), STORAGE_TIMEOUT_MS))
+    ]);
+    statusEl.textContent = 'Guardado ✓ — sincronizado con toda la familia.';
+  }catch(e){
+    statusEl.textContent = 'No se pudo guardar (revisá la conexión). Se reintenta con el próximo cambio.';
+  }
+}
+
+// Escucha cambios en tiempo real: si alguien más de la familia edita algo,
+// esta pestaña se actualiza sola, sin que haya que recargar.
+const initTimeout = setTimeout(()=>{
+  if(firstLoad){
+    storageOk = false;
+    firstLoad = false;
+    renderAll();
+    document.getElementById('saveStatus').textContent = 'Modo sin guardado: no se pudo conectar con la base de datos.';
+  }
+}, STORAGE_TIMEOUT_MS);
+
+dbRef.on('value', (snap)=>{
+  clearTimeout(initTimeout);
+  storageOk = true;
+  const remote = snap.exists() ? snap.val() : null;
+
+  if(remote === null){
+    // Primera vez que se usa esta base de datos: sembrarla con los datos de ejemplo.
+    firstLoad = false;
+    renderAll();
+    saveState();
+    return;
+  }
+  if(remote.schemaVersion !== SCHEMA_VERSION){
+    firstLoad = false;
+    state = seedData();
+    renderAll();
+    showToast('Se actualizó la app — arrancamos con los datos de ejemplo.');
+    saveState();
+    return;
+  }
+
+  state = remote;
+  if(firstLoad){
+    const nuevas = mergeNuevasRecetas(state);
+    firstLoad = false;
+    renderAll();
+    if(nuevas > 0){ showToast(`Se sumaron ${nuevas} recetas nuevas.`); saveState(); }
+  } else {
+    renderAll();
+  }
+}, (err)=>{
+  clearTimeout(initTimeout);
+  storageOk = false;
+  if(firstLoad){ firstLoad = false; renderAll(); }
+  document.getElementById('saveStatus').textContent = 'Modo sin guardado: sin permiso para conectar (revisá las Reglas en Firebase).';
+});
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function findRecipe(id){ return state.recipes.find(r=>r.id===id); }
+function scaleRaw(amount){ return amount * state.personas / 4; }
+function roundFinal(amount, unidad){
+  if(UNIDADES_CONTINUAS.includes(unidad)){
+    if(unidad==='kg'||unidad==='l') return Math.round(amount*10)/10;
+    return Math.round(amount/5)*5;
+  }
+  return Math.ceil(amount - 1e-9);
+}
+function ingKey(nombre, unidad){ return nombre.trim().toLowerCase()+'|'+unidad; }
+
+function computeShoppingTotals(){
+  const totals = {};
+  const ids = [...Object.values(state.semana).filter(Boolean),
+               ...Object.entries(state.postres).filter(([,v])=>v).map(([k])=>k)];
+  ids.forEach(id=>{
+    const receta = findRecipe(id);
+    if(!receta) return;
+    receta.ingredientes.forEach(ing=>{
+      const key = ingKey(ing.nombre, ing.unidad);
+      if(!totals[key]) totals[key] = {nombre:ing.nombre, unidad:ing.unidad, categoria:ing.categoria, raw:0};
+      totals[key].raw += scaleRaw(ing.cantidad);
+    });
+  });
+  return totals;
+}
+
+function badgesHtml(r){
+  let html = '';
+  if(r.tiempo) html += `<span class="time-badge">⏱️ ${r.tiempo} min</span>`;
+  if(r.usaMambo) html += `<span class="mambo-badge">${mamboIcon()} Mambo${r.vaporeras?' · 2 vaporeras':''}</span>`;
+  if(r.estacional) html += `<span class="season-badge">☀️ clima cálido</span>`;
+  return html;
+}
+
+function renderWeek(){
+  const list = document.getElementById('weekList');
+  list.innerHTML='';
+  const principales = state.recipes.filter(r=>r.categoria==='principal');
+  DIAS.forEach(dia=>{
+    const card = document.createElement('div');
+    card.className='day-card';
+    const asignadoId = state.semana[dia];
+    const receta = asignadoId ? findRecipe(asignadoId) : null;
+    let options = `<option value="">Sin planificar</option>`;
+    principales.forEach(r=>{
+      options += `<option value="${r.id}" ${asignadoId===r.id?'selected':''}>${r.estacional?'☀️ ':''}${escapeHtml(r.nombre)}</option>`;
+    });
+    const hecho = !!state.hechos[dia];
+    card.innerHTML = `
+      <div class="day-top"><span class="day-name">${DIAS_LABEL[dia]}</span></div>
+      <select data-dia="${dia}">${options}</select>
+      <div class="day-note">${receta ? badgesHtml(receta) : ''}</div>
+      ${receta ? `<label class="hecho-row ${hecho?'done':''}"><input type="checkbox" data-hecho="${dia}" ${hecho?'checked':''}> ${hecho?'Listo, lo hicimos':'Marcar como hecho'}</label>` : ''}
+    `;
+    list.appendChild(card);
+  });
+  list.querySelectorAll('select').forEach(sel=>{
+    sel.addEventListener('change', async (e)=>{
+      const dia = e.target.getAttribute('data-dia');
+      state.semana[dia] = e.target.value || null;
+      state.hechos[dia] = false;
+      renderWeek(); renderShoppingList();
+      await saveState();
+    });
+  });
+  list.querySelectorAll('[data-hecho]').forEach(inp=>{
+    inp.addEventListener('change', async (e)=>{
+      state.hechos[e.target.getAttribute('data-hecho')] = e.target.checked;
+      renderWeek();
+      await saveState();
+    });
+  });
+
+  const postresRow = document.getElementById('postresRow');
+  postresRow.innerHTML='';
+  state.recipes.filter(r=>r.categoria==='postre').forEach(r=>{
+    const label = document.createElement('label');
+    label.className='chip-check';
+    label.innerHTML = `<input type="checkbox" data-postre="${r.id}" ${state.postres[r.id]?'checked':''}> ${escapeHtml(r.nombre)}`;
+    postresRow.appendChild(label);
+  });
+  postresRow.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', async (e)=>{
+      state.postres[e.target.getAttribute('data-postre')] = e.target.checked;
+      renderShoppingList();
+      await saveState();
+    });
+  });
+}
+
+function recetasVisibles(){
+  const q = recipeQuery.trim().toLowerCase();
+  let lista = state.recipes.filter(r=>{
+    if(recipeFilter==='principal' && r.categoria!=='principal') return false;
+    if(recipeFilter==='postre' && r.categoria!=='postre') return false;
+    if(recipeFilter==='mambo' && !r.usaMambo) return false;
+    if(recipeFilter==='rapidas' && !(r.tiempo && r.tiempo<=30)) return false;
+    if(!q) return true;
+    if(r.nombre.toLowerCase().includes(q)) return true;
+    if((r.notas||'').toLowerCase().includes(q)) return true;
+    return r.ingredientes.some(i=>i.nombre.toLowerCase().includes(q));
+  });
+  if(recipeSort==='alfabetico'){
+    lista.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  } else if(recipeSort==='tiempo'){
+    lista.sort((a,b)=>(a.tiempo||9999)-(b.tiempo||9999));
+  } else if(recipeSort==='tipo'){
+    lista.sort((a,b)=> a.categoria===b.categoria
+      ? a.nombre.localeCompare(b.nombre,'es')
+      : (a.categoria==='principal' ? -1 : 1));
+  }
+  return lista;
+}
+
+function renderRecipes(){
+  const list = document.getElementById('recipeList');
+  list.innerHTML='';
+  const visibles = recetasVisibles();
+
+  const count = document.createElement('p');
+  count.className='result-count';
+  count.textContent = visibles.length===state.recipes.length
+    ? `${state.recipes.length} recetas`
+    : `${visibles.length} de ${state.recipes.length} recetas`;
+  list.appendChild(count);
+
+  if(visibles.length===0){
+    const empty = document.createElement('div');
+    empty.className='no-results';
+    empty.textContent = 'Ninguna receta coincide. Probá con otra palabra o sacá los filtros.';
+    list.appendChild(empty);
+    return;
+  }
+
+  visibles.forEach(r=>{
+    const card = document.createElement('div');
+    card.className='recipe-card';
+    const ingHtml = r.ingredientes.map(i=>{
+      const amt = roundFinal(scaleRaw(i.cantidad), i.unidad);
+      return `<p class="ingredient-line"><span class="emo">${getEmoji(i.nombre,i.categoria)}</span> ${amt} ${escapeHtml(i.unidad)} — ${escapeHtml(i.nombre)}</p>`;
+    }).join('');
+    const pasos = (r.pasos && r.pasos.length) ? r.pasos : [];
+    const stepsHtml = pasos.length
+      ? `<ol>${pasos.map(p=>`<li>${escapeHtml(p)}</li>`).join('')}</ol>`
+      : '<p style="font-size:13px;margin:0;">Todavía no tiene paso a paso cargado.</p>';
+    const isOpen = openStepsIds.has(r.id);
+    card.innerHTML = `
+      <div class="rc-head">
+        <h3>${escapeHtml(r.nombre)}</h3>
+        <span class="tag ${r.categoria==='postre'?'tag-postre':'tag-principal'}">${r.categoria==='postre'?'Postre':'Principal'}</span>
+      </div>
+      <div class="rc-badges">${badgesHtml(r)}</div>
+      <p class="scaled-note">Cantidades para ${state.personas} ${state.personas===1?'persona':'personas'}</p>
+      ${ingHtml}
+      ${r.notas?`<p class="recipe-note">${escapeHtml(r.notas)}</p>`:''}
+      <div class="rc-actions">
+        <button class="btn btn-ghost" data-steps="${r.id}">${isOpen?'Ocultar pasos':'Ver paso a paso'}</button>
+        <button class="btn btn-ghost" data-edit="${r.id}">Editar</button>
+        <button class="btn btn-ghost" data-del="${r.id}">Eliminar</button>
+      </div>
+      <div class="steps-box ${isOpen?'open':''}">${stepsHtml}</div>
+    `;
+    list.appendChild(card);
+  });
+  list.querySelectorAll('[data-steps]').forEach(b=>b.addEventListener('click',()=>{
+    const id = b.getAttribute('data-steps');
+    if(openStepsIds.has(id)) openStepsIds.delete(id); else openStepsIds.add(id);
+    renderRecipes();
+  }));
+  list.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openRecipeModal(b.getAttribute('data-edit'))));
+  list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{
+    const id = b.getAttribute('data-del');
+    const receta = findRecipe(id);
+    openConfirm(`¿Eliminar "${receta.nombre}"?`, async ()=>{
+      state.recipes = state.recipes.filter(r=>r.id!==id);
+      Object.keys(state.semana).forEach(d=>{ if(state.semana[d]===id) state.semana[d]=null; });
+      delete state.postres[id];
+      renderAll(); await saveState();
+    });
+  }));
+}
+
+function renderShoppingList(){
+  const totals = computeShoppingTotals();
+  const banner = document.getElementById('alertBanner');
+  const container = document.getElementById('shoppingList');
+  container.innerHTML='';
+
+  const keys = Object.keys(totals);
+  const pendientes = keys.filter(k=>{
+    const it = totals[k];
+    const comprar = Math.max(0, roundFinal(it.raw, it.unidad) - (state.stock[k]||0));
+    return comprar > 0 && !state.compras[k];
+  });
+
+  if(keys.length===0){
+    banner.innerHTML = `<div class="alert-banner alert-pending">🗓️ Todavía no planificaste ninguna comida.</div>`;
+  } else if(pendientes.length===0){
+    banner.innerHTML = `<div class="alert-banner alert-done">✅ No falta nada por comprar.</div>`;
+  } else {
+    banner.innerHTML = `<div class="alert-banner alert-pending">🛒 Faltan ${pendientes.length} ${pendientes.length===1?'ingrediente':'ingredientes'} por comprar.</div>`;
+  }
+
+  CATEGORIAS_COMPRA.forEach(cat=>{
+    const items = keys.filter(k=>totals[k].categoria===cat);
+    const block = document.createElement('div');
+    block.className='shop-category';
+    if(items.length===0){
+      block.innerHTML = `<h4>${cat}</h4><p class="shop-empty">Nada esta semana</p>`;
+    } else {
+      const rows = items.map(k=>{
+        const it = totals[k];
+        const sugerido = roundFinal(it.raw, it.unidad);
+        const tengo = state.stock[k] || 0;
+        const comprar = Math.max(0, Math.round((sugerido - tengo)*10)/10);
+        const checked = !!state.compras[k];
+        const buyText = comprar > 0
+          ? `Comprar <span class="qty">${comprar} ${escapeHtml(it.unidad)}</span> — ${escapeHtml(it.nombre)}`
+          : `${escapeHtml(it.nombre)} — ya tenés suficiente`;
+        return `<div class="shop-item ${checked?'checked':''}">
+          <input type="checkbox" class="chk" data-key="${escapeHtml(k)}" ${checked?'checked':''}>
+          <span class="emo">${getEmoji(it.nombre,it.categoria)}</span>
+          <div class="shop-main">
+            <div class="buy-line ${comprar>0?'':'enough'}">${buyText}</div>
+            <div class="shop-sub">Necesitás ${sugerido} ${escapeHtml(it.unidad)} en total</div>
+          </div>
+          <div class="stock-box">
+            <span>tengo</span>
+            <input type="number" min="0" step="any" data-stock="${escapeHtml(k)}" value="${tengo || ''}" placeholder="0">
+          </div>
+        </div>`;
+      }).join('');
+      block.innerHTML = `<h4>${cat}</h4>${rows}`;
+    }
+    container.appendChild(block);
+  });
+
+  container.querySelectorAll('input.chk').forEach(inp=>{
+    inp.addEventListener('change', async (e)=>{
+      state.compras[e.target.getAttribute('data-key')] = e.target.checked;
+      renderShoppingList(); await saveState();
+    });
+  });
+  container.querySelectorAll('input[data-stock]').forEach(inp=>{
+    inp.addEventListener('change', async (e)=>{
+      const key = e.target.getAttribute('data-stock');
+      const val = parseFloat(e.target.value);
+      if(isNaN(val) || val<=0) delete state.stock[key]; else state.stock[key] = val;
+      renderShoppingList(); await saveState();
+    });
+  });
+}
+
+document.getElementById('recipeSearch').addEventListener('input', (e)=>{
+  recipeQuery = e.target.value;
+  renderRecipes();
+});
+document.getElementById('recipeSort').addEventListener('change', (e)=>{
+  recipeSort = e.target.value;
+  renderRecipes();
+});
+document.querySelectorAll('.filter-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    recipeFilter = chip.getAttribute('data-filter');
+    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active', c===chip));
+    renderRecipes();
+  });
+});
+
+function renderIdeas(){
+  const cont = document.getElementById('ideasList');
+  cont.innerHTML='';
+  if(!state.ideas || state.ideas.length===0){
+    cont.innerHTML = `<div class="ideas-empty">Acá anotás platos que se te ocurren o que viste por ahí. Cuando tengas ganas de cocinar uno, lo pasás a receta con un botón.</div>`;
+    return;
+  }
+  state.ideas.forEach(idea=>{
+    const card = document.createElement('div');
+    card.className='idea-card';
+    card.innerHTML = `
+      <h4>${escapeHtml(idea.titulo)}</h4>
+      ${idea.nota?`<p>${escapeHtml(idea.nota)}</p>`:''}
+      <div class="idea-actions">
+        <button class="btn btn-accent" data-convert="${idea.id}">Pasar a receta</button>
+        <button class="btn btn-ghost" data-delidea="${idea.id}">Borrar</button>
+      </div>
+    `;
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll('[data-convert]').forEach(b=>b.addEventListener('click',()=>{
+    const idea = state.ideas.find(i=>i.id===b.getAttribute('data-convert'));
+    convertingIdeaId = idea.id;
+    openRecipeModal(null, idea);
+  }));
+  cont.querySelectorAll('[data-delidea]').forEach(b=>b.addEventListener('click',()=>{
+    const id = b.getAttribute('data-delidea');
+    const idea = state.ideas.find(i=>i.id===id);
+    openConfirm(`¿Borrar la idea "${idea.titulo}"?`, async ()=>{
+      state.ideas = state.ideas.filter(i=>i.id!==id);
+      renderIdeas(); await saveState();
+    });
+  }));
+}
+
+document.getElementById('btnAddIdea').addEventListener('click', async ()=>{
+  const tituloEl = document.getElementById('ideaTitulo');
+  const notaEl = document.getElementById('ideaNota');
+  const titulo = tituloEl.value.trim();
+  if(!titulo){ showToast('Escribí la idea primero.'); return; }
+  if(!state.ideas) state.ideas = [];
+  state.ideas.unshift({id:'idea-'+Date.now(), titulo, nota:notaEl.value.trim()});
+  tituloEl.value=''; notaEl.value='';
+  renderIdeas(); await saveState();
+});
+
+function renderPersonas(){ document.getElementById('personasValue').textContent = state.personas; }
+function renderAll(){ renderWeek(); renderRecipes(); renderIdeas(); renderShoppingList(); renderPersonas(); }
+
+document.querySelectorAll('[data-tab]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.getAttribute('data-tab');
+    document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===tab));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-'+tab).classList.add('active');
+    window.scrollTo(0,0);
+  });
+});
+
+document.getElementById('personasPlus').addEventListener('click', async ()=>{
+  state.personas = Math.min(12, state.personas+1);
+  renderPersonas(); renderRecipes(); renderShoppingList();
+  await saveState();
+});
+document.getElementById('personasMinus').addEventListener('click', async ()=>{
+  state.personas = Math.max(1, state.personas-1);
+  renderPersonas(); renderRecipes(); renderShoppingList();
+  await saveState();
+});
+
+document.getElementById('btnResetChecks').addEventListener('click', ()=>{
+  openConfirm('¿Empezar una semana nueva? Se desmarcan las compras y las comidas hechas.', async ()=>{
+    state.compras = {};
+    DIAS.forEach(d=>state.hechos[d]=false);
+    renderAll(); await saveState();
+  });
+});
+document.getElementById('btnResetStock').addEventListener('click', ()=>{
+  openConfirm('¿Poner en cero todo lo que marcaste como "ya tengo"?', async ()=>{
+    state.stock = {};
+    renderShoppingList(); await saveState();
+  });
+});
+document.getElementById('btnResetData').addEventListener('click', ()=>{
+  openConfirm('Esto borra tus recetas y tu semana, y vuelve a los datos de ejemplo. ¿Continuar?', async ()=>{
+    state = seedData();
+    renderAll(); await saveState();
+  });
+});
+
+function openRecipeModal(id, idea){
+  editingRecipeId = id;
+  const ingRows = document.getElementById('ingRows');
+  ingRows.innerHTML='';
+  if(id){
+    const r = findRecipe(id);
+    document.getElementById('recipeModalTitle').textContent = 'Editar receta';
+    document.getElementById('rNombre').value = r.nombre;
+    document.getElementById('rCategoria').value = r.categoria;
+    document.getElementById('rNotas').value = r.notas||'';
+    document.getElementById('rTiempo').value = r.tiempo||'';
+    document.getElementById('rMambo').checked = !!r.usaMambo;
+    document.getElementById('rVaporeras').checked = !!r.vaporeras;
+    document.getElementById('rEstacional').checked = !!r.estacional;
+    document.getElementById('rPasos').value = (r.pasos||[]).join('\n');
+    r.ingredientes.forEach(ing=>addIngRow(ing));
+  } else {
+    document.getElementById('recipeModalTitle').textContent = idea ? 'Pasar la idea a receta' : 'Nueva receta';
+    ['rNombre','rNotas','rTiempo','rPasos'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('rCategoria').value = 'principal';
+    ['rMambo','rVaporeras','rEstacional'].forEach(i=>document.getElementById(i).checked=false);
+    if(idea){
+      document.getElementById('rNombre').value = idea.titulo;
+      document.getElementById('rNotas').value = idea.nota || '';
+    }
+    addIngRow();
+  }
+  document.getElementById('recipeModalOverlay').classList.add('open');
+}
+function closeRecipeModal(){
+  document.getElementById('recipeModalOverlay').classList.remove('open');
+  editingRecipeId = null;
+  convertingIdeaId = null;
+}
+function addIngRow(ing){
+  const row = document.createElement('div');
+  row.className='ing-row';
+  const catOptions = CATEGORIAS_COMPRA.map(c=>`<option value="${c}" ${ing&&ing.categoria===c?'selected':''}>${c}</option>`).join('');
+  row.innerHTML = `
+    <input type="text" class="ing-nombre" placeholder="Ingrediente" value="${ing?escapeHtml(ing.nombre):''}">
+    <input type="number" class="ing-cantidad" placeholder="Cant." min="0" step="any" value="${ing?ing.cantidad:''}">
+    <input type="text" class="ing-unidad" placeholder="g/unid." value="${ing?escapeHtml(ing.unidad):''}">
+    <select class="ing-categoria">${catOptions}</select>
+    <button type="button" class="rm">✕</button>
+  `;
+  row.querySelector('.rm').addEventListener('click', ()=>row.remove());
+  document.getElementById('ingRows').appendChild(row);
+}
+document.getElementById('btnAddIng').addEventListener('click', ()=>addIngRow());
+document.getElementById('btnNuevaReceta').addEventListener('click', ()=>openRecipeModal(null));
+document.getElementById('btnCancelRecipe').addEventListener('click', closeRecipeModal);
+
+document.getElementById('btnSaveRecipe').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('rNombre').value.trim();
+  if(!nombre){ showToast('Ponele un nombre a la receta.'); return; }
+  const categoria = document.getElementById('rCategoria').value;
+  const notas = document.getElementById('rNotas').value.trim();
+  const tiempoRaw = parseInt(document.getElementById('rTiempo').value,10);
+  const tiempo = isNaN(tiempoRaw) ? null : tiempoRaw;
+  const usaMambo = document.getElementById('rMambo').checked;
+  const vaporeras = document.getElementById('rVaporeras').checked;
+  const estacional = document.getElementById('rEstacional').checked;
+  const pasos = document.getElementById('rPasos').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const ingredientes = [];
+  document.querySelectorAll('#ingRows .ing-row').forEach(row=>{
+    const n = row.querySelector('.ing-nombre').value.trim();
+    const c = parseFloat(row.querySelector('.ing-cantidad').value);
+    const u = row.querySelector('.ing-unidad').value.trim();
+    const cat = row.querySelector('.ing-categoria').value;
+    if(n && !isNaN(c) && u) ingredientes.push({nombre:n, cantidad:c, unidad:u, categoria:cat});
+  });
+  if(ingredientes.length===0){ showToast('Agregá al menos un ingrediente válido.'); return; }
+
+  if(editingRecipeId){
+    const r = findRecipe(editingRecipeId);
+    Object.assign(r, {nombre, categoria, notas, ingredientes, usaMambo, vaporeras, estacional, pasos, tiempo});
+  } else {
+    state.recipes.push({id:'receta-'+Date.now(), nombre, categoria, notas, ingredientes, usaMambo, vaporeras, estacional, pasos, tiempo});
+    if(convertingIdeaId){
+      state.ideas = state.ideas.filter(i=>i.id!==convertingIdeaId);
+      showToast('Idea convertida en receta.');
+    }
+  }
+  closeRecipeModal(); renderAll(); await saveState();
+});
+
+function openConfirm(text, onYes){
+  document.getElementById('confirmText').textContent = text;
+  confirmCallback = onYes;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm(){
+  document.getElementById('confirmOverlay').classList.remove('open');
+  confirmCallback = null;
+}
+document.getElementById('btnConfirmNo').addEventListener('click', closeConfirm);
+document.getElementById('btnConfirmYes').addEventListener('click', async ()=>{
+  const cb = confirmCallback; closeConfirm(); if(cb) await cb();
+});
+
+// Suma al estado guardado las recetas nuevas que vengan en esta versión,
+// sin tocar las que el usuario ya tenía ni su semana o sus compras.
+function mergeNuevasRecetas(guardado){
+  const base = seedData();
+  let agregadas = 0;
+  if(!Array.isArray(guardado.recipes)) guardado.recipes = [];
+  base.recipes.forEach(r=>{
+    if(!guardado.recipes.some(x=>x.id===r.id)){ guardado.recipes.push(r); agregadas++; }
+  });
+  if(!Array.isArray(guardado.ideas)) guardado.ideas = [];
+  if(!guardado.stock) guardado.stock = {};
+  if(!guardado.hechos) guardado.hechos = base.hechos;
+  return agregadas;
+}
+
+// Dibuja primero con los datos de ejemplo. En cuanto Firebase responda
+// (más arriba, en dbRef.on('value', ...)), se actualiza con los datos reales.
+renderAll();
+</script>
+</body>
+</html>
