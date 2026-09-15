@@ -7,8 +7,6 @@
 <title>La cocina de la semana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
 <style>
   :root{
     color-scheme: light only;
@@ -350,20 +348,8 @@
 
 <script>
 const SCHEMA_VERSION = 3;
-const STORAGE_TIMEOUT_MS = 6000;
-
-// Pegado desde la consola de Firebase (Configuración del proyecto > Tus apps)
-const firebaseConfig = {
-  apiKey: "AIzaSyD791TV7sq5BpNSy1rWXJogy-MKUSsef-4",
-  authDomain: "mambo-cocine.firebaseapp.com",
-  databaseURL: "https://mambo-cocine-default-rtdb.firebaseio.com",
-  projectId: "mambo-cocine",
-  storageBucket: "mambo-cocine.firebasestorage.app",
-  messagingSenderId: "569688682973",
-  appId: "1:569688682973:web:acbc0a48bd74f083cf8634",
-};
-firebase.initializeApp(firebaseConfig);
-const dbRef = firebase.database().ref('cocina-semanal-datos');
+const STORAGE_KEY = 'cocina-semanal-datos';
+const STORAGE_TIMEOUT_MS = 3000;
 const DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
 const DIAS_LABEL = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
 const CATEGORIAS_COMPRA = ['Verdulería','Dietética','Carnicería','Almacén'];
@@ -714,70 +700,33 @@ let convertingIdeaId = null;
 let recipeQuery = '';
 let recipeFilter = 'todas';
 let recipeSort = 'alfabetico';
-let storageOk = true;
-let firstLoad = true;
+let storageOk = false;
 
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), ms))
+  ]);
+}
+async function loadState(){
+  if(!window.storage || typeof window.storage.get !== 'function') return null;
+  try{
+    const res = await withTimeout(window.storage.get(STORAGE_KEY, true), STORAGE_TIMEOUT_MS);
+    if(res && res.value) return JSON.parse(res.value);
+    return null;
+  }catch(e){ return undefined; }
+}
 async function saveState(){
   const statusEl = document.getElementById('saveStatus');
-  if(!storageOk){ statusEl.textContent = 'Modo sin guardado: no se pudo conectar con la base de datos.'; return; }
+  if(!storageOk){ statusEl.textContent = 'Modo sin guardado: los cambios duran hasta que cierres.'; return; }
   try{
-    await Promise.race([
-      dbRef.set(state),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), STORAGE_TIMEOUT_MS))
-    ]);
-    statusEl.textContent = 'Guardado ✓ — sincronizado con toda la familia.';
+    await withTimeout(window.storage.set(STORAGE_KEY, JSON.stringify(state), true), STORAGE_TIMEOUT_MS);
+    statusEl.textContent = 'Guardado ✓ — compartido con la familia.';
   }catch(e){
-    statusEl.textContent = 'No se pudo guardar (revisá la conexión). Se reintenta con el próximo cambio.';
+    storageOk = false;
+    statusEl.textContent = 'Modo sin guardado: los cambios duran hasta que cierres.';
   }
 }
-
-// Escucha cambios en tiempo real: si alguien más de la familia edita algo,
-// esta pestaña se actualiza sola, sin que haya que recargar.
-const initTimeout = setTimeout(()=>{
-  if(firstLoad){
-    storageOk = false;
-    firstLoad = false;
-    renderAll();
-    document.getElementById('saveStatus').textContent = 'Modo sin guardado: no se pudo conectar con la base de datos.';
-  }
-}, STORAGE_TIMEOUT_MS);
-
-dbRef.on('value', (snap)=>{
-  clearTimeout(initTimeout);
-  storageOk = true;
-  const remote = snap.exists() ? snap.val() : null;
-
-  if(remote === null){
-    // Primera vez que se usa esta base de datos: sembrarla con los datos de ejemplo.
-    firstLoad = false;
-    renderAll();
-    saveState();
-    return;
-  }
-  if(remote.schemaVersion !== SCHEMA_VERSION){
-    firstLoad = false;
-    state = seedData();
-    renderAll();
-    showToast('Se actualizó la app — arrancamos con los datos de ejemplo.');
-    saveState();
-    return;
-  }
-
-  state = remote;
-  if(firstLoad){
-    const nuevas = mergeNuevasRecetas(state);
-    firstLoad = false;
-    renderAll();
-    if(nuevas > 0){ showToast(`Se sumaron ${nuevas} recetas nuevas.`); saveState(); }
-  } else {
-    renderAll();
-  }
-}, (err)=>{
-  clearTimeout(initTimeout);
-  storageOk = false;
-  if(firstLoad){ firstLoad = false; renderAll(); }
-  document.getElementById('saveStatus').textContent = 'Modo sin guardado: sin permiso para conectar (revisá las Reglas en Firebase).';
-});
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -1260,9 +1209,34 @@ function mergeNuevasRecetas(guardado){
   return agregadas;
 }
 
-// Dibuja primero con los datos de ejemplo. En cuanto Firebase responda
-// (más arriba, en dbRef.on('value', ...)), se actualiza con los datos reales.
+// Dibuja primero, guarda después. Si el guardado no responde, la app igual funciona.
 renderAll();
+(async function init(){
+  const statusEl = document.getElementById('saveStatus');
+  const loaded = await loadState();
+  if(loaded === null){
+    storageOk = true;
+    await saveState();
+  } else if(loaded === undefined){
+    storageOk = false;
+    statusEl.textContent = 'Modo sin guardado: los cambios duran hasta que cierres.';
+  } else if(loaded.schemaVersion === SCHEMA_VERSION){
+    storageOk = true;
+    state = loaded;
+    const nuevas = mergeNuevasRecetas(state);
+    renderAll();
+    statusEl.textContent = 'Guardado ✓ — compartido con la familia.';
+    if(nuevas > 0){
+      showToast(`Se sumaron ${nuevas} recetas nuevas.`);
+      await saveState();
+    }
+  } else {
+    storageOk = true;
+    renderAll();
+    showToast('Se actualizó la app — arrancamos con los datos de ejemplo.');
+    await saveState();
+  }
+})();
 </script>
 </body>
 </html>
